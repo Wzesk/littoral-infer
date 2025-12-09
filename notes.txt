@@ -1,0 +1,12 @@
+When would you use MrDMD?
+You should switch to MrDMD only if your question changes from "What did the shoreline look like on the missing day?" to "What are the driving forces of the shoreline?"
+If you want to ask:
+Is there a 365-day seasonal cycle in the erosion?
+Is there a distinct El Niño mode vs. a background erosion mode?
+Then you would:
+Use your IGR model to fill in the gaps and create a perfectly uniform daily dataset.
+Rasterize those IGR outputs into grids.
+Run MrDMD on that clean dataset to decompose the physics.
+Conclusion for your use case
+Stick with the Spatiotemporal SDF (IGR) for the interpolation task. It enforces the Eikonal constraint (
+, which is mathematically very similar to the "Level Set Equation" used in physics to track moving interfaces. It is the most mathematically robust way to handle the topology changes and movement of a shoreline.
