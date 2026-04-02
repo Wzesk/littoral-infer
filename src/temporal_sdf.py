@@ -24,9 +24,41 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from scipy.interpolate import interp1d
-from skimage import measure
+
+try:
+    from skimage import measure
+except ImportError:  # pragma: no cover - exercised indirectly in downstream integration
+    measure = None
 
 logger = logging.getLogger(__name__)
+
+
+def _find_zero_contours(grid: np.ndarray) -> List[np.ndarray]:
+    """Return zero-level contours with a skimage-first, matplotlib-second fallback."""
+    if measure is not None:
+        return measure.find_contours(grid, 0.0)
+
+    import matplotlib.pyplot as plt
+
+    fig = plt.figure()
+    try:
+        axis = fig.add_subplot(111)
+        cs = axis.contour(grid, levels=[0.0])
+        contours: list[np.ndarray] = []
+        if hasattr(cs, "collections"):
+            for collection in cs.collections:
+                for path in collection.get_paths():
+                    verts = path.vertices
+                    if len(verts) >= 2:
+                        contours.append(np.asarray(verts, dtype=np.float32))
+        else:
+            for segment_group in getattr(cs, "allsegs", []):
+                for verts in segment_group:
+                    if len(verts) >= 2:
+                        contours.append(np.asarray(verts, dtype=np.float32))
+        return contours
+    finally:
+        plt.close(fig)
 
 
 def _ensure_open(points: np.ndarray) -> np.ndarray:
@@ -436,7 +468,7 @@ class ShorelineEvolutionSDF:
 
     def get_shoreline_at_day(self, day: float, *, n_points: int = 200, grid_res: int = 256) -> np.ndarray:
         Z = self.evaluate_sdf_grid(day, grid_res=grid_res)
-        contours = measure.find_contours(Z, 0.0)
+        contours = _find_zero_contours(Z)
         if not contours:
             raise ValueError(f"No zero level-set at day {day}")
 
